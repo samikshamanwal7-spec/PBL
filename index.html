@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Stock Market Learning Platform</title>
+<style>
+  :root {
+    --bg:#f3f5f9; --card:#ffffff; --text:#1b2433; --muted:#6b7688; --line:#e3e8f0;
+    --brand:#1f5fa8; --brand-d:#174a85; --up:#16874a; --down:#c93a3a;
+    --shadow:0 1px 3px rgba(20,35,60,.08), 0 4px 14px rgba(20,35,60,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#10151d; --card:#18202b; --text:#e8edf5; --muted:#93a0b4; --line:#27313f;
+            --brand:#4b8fdc; --brand-d:#3a78c0; --up:#38c27a; --down:#ef6565;
+            --shadow:0 1px 3px rgba(0,0,0,.4); }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+         background:var(--bg); color:var(--text); font-size:15px; }
+  h1,h2,h3 { margin:0; }
+  .hidden { display:none !important; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .muted { color:var(--muted); }
+  button { font:inherit; cursor:pointer; border:0; border-radius:8px; padding:9px 16px;
+           background:var(--brand); color:#fff; font-weight:600; }
+  button:hover { background:var(--brand-d); }
+  button.ghost { background:transparent; color:var(--brand); border:1px solid var(--line); }
+  button.ghost:hover { background:var(--bg); }
+  button.danger { background:var(--down); }
+  button.small { padding:5px 10px; font-size:13px; }
+  button:disabled { opacity:.55; cursor:not-allowed; }
+  input, select { font:inherit; padding:9px 11px; border:1px solid var(--line); border-radius:8px;
+                  background:var(--card); color:var(--text); width:100%; }
+  input:focus, select:focus { outline:2px solid var(--brand); outline-offset:-1px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:12px 0 5px; }
+
+  /* ---------- sign in ---------- */
+  #auth { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .auth-card { background:var(--card); width:100%; max-width:400px; border-radius:14px;
+               box-shadow:var(--shadow); padding:30px; }
+  .auth-card h1 { font-size:21px; color:var(--brand); }
+  .auth-card p { margin:6px 0 18px; color:var(--muted); font-size:14px; }
+  .tabs2 { display:flex; background:var(--bg); border-radius:9px; padding:4px; margin-bottom:6px; }
+  .tabs2 button { flex:1; background:transparent; color:var(--muted); padding:8px; }
+  .tabs2 button.active { background:var(--card); color:var(--brand); box-shadow:var(--shadow); }
+  .err { color:var(--down); font-size:14px; min-height:20px; margin-top:12px; }
+
+  /* ---------- app ---------- */
+  header { background:var(--brand); color:#fff; padding:12px 22px; display:flex; flex-wrap:wrap;
+           gap:14px; align-items:center; justify-content:space-between; }
+  header h1 { font-size:18px; }
+  header .sub { font-size:12px; opacity:.85; }
+  .stats { display:flex; gap:22px; flex-wrap:wrap; }
+  .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.5px; opacity:.8; }
+  .stat .v { font-size:17px; font-weight:700; }
+  .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  header button { background:rgba(255,255,255,.16); }
+  header button:hover { background:rgba(255,255,255,.28); }
+  header .auto { display:flex; align-items:center; gap:6px; font-size:13px; margin:0; color:#fff; }
+  header .auto input { width:auto; }
+  nav { display:flex; gap:4px; padding:10px 22px 0; flex-wrap:wrap; border-bottom:1px solid var(--line);
+        background:var(--card); }
+  nav button { background:transparent; color:var(--muted); border-radius:8px 8px 0 0; padding:10px 16px; }
+  nav button:hover { background:var(--bg); }
+  nav button.active { color:var(--brand); box-shadow:inset 0 -3px 0 var(--brand); }
+  main { max-width:1050px; margin:20px auto; padding:0 18px 40px; }
+  .card { background:var(--card); border-radius:12px; box-shadow:var(--shadow); padding:20px; margin-bottom:18px; }
+  .card h2 { font-size:17px; margin-bottom:4px; }
+  .card .hint { color:var(--muted); font-size:13px; margin-bottom:14px; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted);
+       padding:9px 10px; border-bottom:1px solid var(--line); }
+  td { padding:11px 10px; border-bottom:1px solid var(--line); }
+  tr:last-child td { border-bottom:0; }
+  th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .wrap { overflow-x:auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; }
+  .tile { background:var(--bg); border-radius:10px; padding:14px; }
+  .tile .k { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .tile .v { font-size:20px; font-weight:700; margin-top:4px; }
+  .seg { display:flex; gap:8px; margin-top:4px; }
+  .seg button { flex:1; background:var(--bg); color:var(--text); border:1px solid var(--line); }
+  .seg button.buy.active  { background:var(--up);   color:#fff; border-color:var(--up); }
+  .seg button.sell.active { background:var(--down); color:#fff; border-color:var(--down); }
+  .preview { background:var(--bg); border-radius:10px; padding:12px 14px; margin-top:14px; font-size:14px; }
+  .preview div { display:flex; justify-content:space-between; padding:3px 0; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; }
+  .badge.buy { background:rgba(22,135,74,.14); color:var(--up); }
+  .badge.sell { background:rgba(201,58,58,.14); color:var(--down); }
+  .sector { font-size:12px; background:var(--bg); padding:2px 8px; border-radius:99px; color:var(--muted); }
+  #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#1b2433; color:#fff;
+           padding:12px 20px; border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.3); opacity:0;
+           pointer-events:none; transition:opacity .2s; max-width:90vw; z-index:10; }
+  #toast.show { opacity:1; }
+  #toast.ok { border-left:5px solid #38c27a; } #toast.bad { border-left:5px solid #ef6565; }
+  svg text { fill:var(--muted); font-size:11px; }
+  .empty { color:var(--muted); padding:22px 6px; text-align:center; }
+  .toolbar { display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:14px; }
+  .toolbar > div { min-width:240px; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding-bottom:26px; }
+</style>
+</head>
+<body>
+
+<!-- ============ SIGN IN / SIGN UP (User Management) ============ -->
+<section id="auth">
+  <div class="auth-card">
+    <h1>Virtual Stock Market Learning Platform</h1>
+    <p>Practise trading with virtual money. Runs fully offline on this computer.</p>
+    <div class="tabs2">
+      <button id="tabIn" class="active" type="button">Sign In</button>
+      <button id="tabUp" type="button">Sign Up</button>
+    </div>
+    <label for="user">Username</label>
+    <input id="user" autocomplete="username">
+    <label for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password">
+    <div class="err" id="authErr"></div>
+    <button id="authBtn" style="width:100%;margin-top:6px">Sign In</button>
+    <p class="muted" style="margin:14px 0 0;font-size:13px">New accounts start with ₹10,000.</p>
+  </div>
+</section>
+
+<!-- ============ MAIN APP ============ -->
+<section id="app" class="hidden">
+  <header>
+    <div>
+      <h1>Virtual Stock Market Learning Platform</h1>
+      <div class="sub">Signed in as <b id="who"></b></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Cash</div><div class="v" id="hCash">–</div></div>
+      <div class="stat"><div class="k">Net worth</div><div class="v" id="hNet">–</div></div>
+    </div>
+    <div class="actions">
+      <button id="tickBtn" type="button">Advance Market</button>
+      <label class="auto"><input type="checkbox" id="autoTick"> Auto (3s)</label>
+      <button id="outBtn" type="button">Save &amp; Sign out</button>
+    </div>
+  </header>
+
+  <nav id="nav">
+    <button data-tab="market" class="active">Market</button>
+    <button data-tab="trade">Buy / Sell</button>
+    <button data-tab="portfolio">Portfolio</button>
+    <button data-tab="history">History</button>
+    <button data-tab="related">Related Stocks</button>
+    <button data-tab="trend">Price Trend</button>
+  </nav>
+
+  <main>
+    <!-- Stock Market module -->
+    <div id="tab-market">
+      <div class="card">
+        <h2>Market</h2>
+        <div class="hint">All listed stocks, sorted by symbol. Prices move each time the market advances.</div>
+        <div class="wrap"><table>
+          <thead><tr><th>Symbol</th><th>Name</th><th>Sector</th><th class="num">Price</th><th class="num">Change</th><th class="num">You hold</th><th></th></tr></thead>
+          <tbody id="marketBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- Trading & Portfolio module -->
+    <div id="tab-trade" class="hidden">
+      <div class="card" style="max-width:560px">
+        <h2>Buy / Sell shares</h2>
+        <div class="hint">Orders are processed through the order queue at the current market price.</div>
+        <div class="seg">
+          <button type="button" class="buy active" id="sideBuy">Buy</button>
+          <button type="button" class="sell" id="sideSell">Sell</button>
+        </div>
+        <label for="tSym">Stock</label>
+        <select id="tSym"></select>
+        <label for="tQty">Quantity</label>
+        <input id="tQty" type="number" min="1" step="1" value="1">
+        <div class="preview">
+          <div><span class="muted">Current price</span><b id="pvPrice">–</b></div>
+          <div><span class="muted">Estimated total</span><b id="pvTotal">–</b></div>
+          <div><span class="muted">You hold</span><b id="pvHeld">–</b></div>
+        </div>
+        <button id="tradeBtn" style="width:100%;margin-top:16px">Place buy order</button>
+      </div>
+    </div>
+
+    <div id="tab-portfolio" class="hidden">
+      <div class="card">
+        <h2>Your portfolio</h2>
+        <div class="hint">Realized profit/loss is locked in by selling; unrealized is the paper gain on shares you still hold.</div>
+        <div class="grid" id="pfTiles"></div>
+      </div>
+      <div class="card">
+        <h2>Holdings</h2>
+        <div class="wrap"><table>
+          <thead><tr><th>Symbol</th><th>Name</th><th class="num">Qty</th><th class="num">Avg cost</th><th class="num">Price</th><th class="num">Unrealized P&amp;L</th></tr></thead>
+          <tbody id="pfBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- Transactions & Orders module -->
+    <div id="tab-history" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div><h2>Transaction history</h2><div class="hint" style="margin:0">Newest first (stack). Undo reverses the latest one.</div></div>
+          <button id="undoBtn" class="danger" type="button">Undo last transaction</button>
+        </div>
+        <div class="wrap" style="margin-top:12px"><table>
+          <thead><tr><th>Type</th><th>Symbol</th><th class="num">Qty</th><th class="num">Price</th><th class="num">P&amp;L</th><th>Time</th></tr></thead>
+          <tbody id="hsBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div id="tab-related" class="hidden">
+      <div class="card">
+        <h2>Related stocks</h2>
+        <div class="hint">Stocks in the same sector are linked in a graph; a breadth-first search finds them.</div>
+        <div class="toolbar"><div><label for="rSym" style="margin-top:0">Stock</label><select id="rSym"></select></div></div>
+        <div class="wrap"><table>
+          <thead><tr><th>Symbol</th><th>Name</th><th class="num">Hops away</th><th class="num">Price</th></tr></thead>
+          <tbody id="rBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div id="tab-trend" class="hidden">
+      <div class="card">
+        <h2>Price trend</h2>
+        <div class="hint">Last 30 ticks, read from the stock's price history (linked list). Advance the market to add points.</div>
+        <div class="toolbar"><div><label for="cSym" style="margin-top:0">Stock</label><select id="cSym"></select></div></div>
+        <div id="chart"></div>
+        <div class="grid" id="chartTiles" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </main>
+  <footer>Runs offline on this computer only &middot; C++ backend, local web page</footer>
+</section>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (v) => inr.format(v);
+const signed = (v) => (v > 0.005 ? "+" : v < -0.005 ? "−" : "") + inr.format(Math.abs(v));
+const pct = (v) => (v > 0.005 ? "+" : v < -0.005 ? "−" : "") + Math.abs(v).toFixed(2) + "%";
+const cls = (v) => (v > 0.005 ? "up" : v < -0.005 ? "down" : "muted");
+
+let token = sessionStorage.getItem("token") || "";
+let signUpMode = false, side = "buy", tab = "market", stocks = [], autoTimer = null;
+
+/* ---------- talking to the C++ server ---------- */
+async function api(path, params = {}, method = "GET") {
+  const body = new URLSearchParams({ token, ...params });
+  const url = method === "GET" ? path + "?" + body : path;
+  try {
+    const res = await fetch(url, method === "GET" ? {} : { method: "POST", body });
+    const data = await res.json();
+    if (res.status === 401) { showAuth(); return { ok: false, error: data.error }; }
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Cannot reach the local server. Is the program still running?" };
+  }
+}
+
+function toast(msg, ok = true) {
+  const t = $("toast");
+  t.textContent = msg; t.className = "show " + (ok ? "ok" : "bad");
+  clearTimeout(toast.h); toast.h = setTimeout(() => (t.className = ""), 3400);
+}
+function setSummary(s) {
+  if (!s) return;
+  $("hCash").textContent = money(s.cash);
+  $("hNet").textContent = money(s.netWorth);
+}
+
+/* ---------- User Management: sign in / sign up ---------- */
+function setMode(up) {
+  signUpMode = up;
+  $("tabIn").classList.toggle("active", !up); $("tabUp").classList.toggle("active", up);
+  $("authBtn").textContent = up ? "Create account" : "Sign In";
+  $("authErr").textContent = "";
+}
+$("tabIn").onclick = () => setMode(false);
+$("tabUp").onclick = () => setMode(true);
+async function submitAuth() {
+  const username = $("user").value.trim(), password = $("pass").value;
+  if (!username || !password) { $("authErr").textContent = "Enter a username and password."; return; }
+  $("authBtn").disabled = true;
+  const r = await api(signUpMode ? "/api/signup" : "/api/signin", { username, password }, "POST");
+  $("authBtn").disabled = false;
+  if (!r.ok) { $("authErr").textContent = r.error || "Something went wrong."; return; }
+  token = r.token; sessionStorage.setItem("token", token);
+  sessionStorage.setItem("who", r.username);
+  $("pass").value = "";
+  showApp(); setSummary(r.summary);
+  toast(signUpMode ? "Account created. Starting balance ₹10,000.00" : "Welcome back, " + r.username + "!");
+}
+$("authBtn").onclick = submitAuth;
+$("pass").addEventListener("keydown", (e) => { if (e.key === "Enter") submitAuth(); });
+$("user").addEventListener("keydown", (e) => { if (e.key === "Enter") $("pass").focus(); });
+
+function showAuth() {
+  token = ""; sessionStorage.removeItem("token"); stopAuto();
+  setMode(false); // back to the Sign In tab
+  $("app").classList.add("hidden"); $("auth").classList.remove("hidden");
+}
+function showApp() {
+  $("auth").classList.add("hidden"); $("app").classList.remove("hidden");
+  $("who").textContent = sessionStorage.getItem("who") || "";
+  switchTab("market");
+}
+$("outBtn").onclick = async () => {
+  const r = await api("/api/signout", {}, "POST");
+  showAuth(); $("authErr").textContent = "";
+  if (r.ok) toast("Balance and portfolio saved. Goodbye!");
+};
+
+/* ---------- navigation ---------- */
+function switchTab(name) {
+  tab = name;
+  document.querySelectorAll("#nav button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  ["market", "trade", "portfolio", "history", "related", "trend"].forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== name));
+  refresh();
+}
+$("nav").addEventListener("click", (e) => { if (e.target.dataset.tab) switchTab(e.target.dataset.tab); });
+
+async function refresh() {
+  const m = await api("/api/market");
+  if (!m.ok) return;
+  stocks = m.stocks; setSummary(m.summary);
+  fillSelects();
+  if (tab === "market") renderMarket();
+  if (tab === "trade") updatePreview();
+  if (tab === "portfolio") loadPortfolio();
+  if (tab === "history") loadHistory();
+  if (tab === "related") loadRelated();
+  if (tab === "trend") loadTrend();
+}
+
+function fillSelects() {
+  ["tSym", "rSym", "cSym"].forEach((id) => {
+    const sel = $(id);
+    if (sel.options.length === stocks.length) return;
+    const keep = sel.value;
+    sel.innerHTML = "";
+    stocks.forEach((s) => sel.add(new Option(s.symbol + " – " + s.name, s.symbol)));
+    if (keep) sel.value = keep;
+  });
+}
+
+/* ---------- Stock Market module: market table ---------- */
+function renderMarket() {
+  $("marketBody").innerHTML = stocks.map((s) => `
+    <tr>
+      <td><b>${s.symbol}</b></td><td>${s.name}</td><td><span class="sector">${s.sector}</span></td>
+      <td class="num">${money(s.price)}</td>
+      <td class="num ${cls(s.change)}">${s.change > 0.005 ? "▲" : s.change < -0.005 ? "▼" : "•"} ${pct(s.change)}</td>
+      <td class="num">${s.held}</td>
+      <td class="num"><button class="small" data-act="buy" data-sym="${s.symbol}">Buy</button>
+          <button class="small ghost" data-act="sell" data-sym="${s.symbol}">Sell</button></td>
+    </tr>`).join("");
+}
+$("marketBody").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setSide(b.dataset.act); $("tSym").value = b.dataset.sym; switchTab("trade");
+});
+$("tickBtn").onclick = async () => { await api("/api/tick", {}, "POST"); await refresh(); };
+function stopAuto() { clearInterval(autoTimer); autoTimer = null; $("autoTick").checked = false; }
+$("autoTick").onchange = (e) => {
+  clearInterval(autoTimer); autoTimer = null;
+  if (e.target.checked) autoTimer = setInterval(async () => { await api("/api/tick", {}, "POST"); refresh(); }, 3000);
+};
+
+/* ---------- Trading & Portfolio module ---------- */
+function setSide(s) {
+  side = s;
+  $("sideBuy").classList.toggle("active", s === "buy");
+  $("sideSell").classList.toggle("active", s === "sell");
+  $("tradeBtn").textContent = s === "buy" ? "Place buy order" : "Place sell order";
+  $("tradeBtn").className = s === "buy" ? "" : "danger";
+}
+$("sideBuy").onclick = () => setSide("buy");
+$("sideSell").onclick = () => setSide("sell");
+function updatePreview() {
+  const s = stocks.find((x) => x.symbol === $("tSym").value); if (!s) return;
+  const q = parseInt($("tQty").value, 10) || 0;
+  $("pvPrice").textContent = money(s.price);
+  $("pvTotal").textContent = money(s.price * Math.max(q, 0));
+  $("pvHeld").textContent = s.held + " share(s)";
+}
+$("tSym").onchange = updatePreview; $("tQty").oninput = updatePreview;
+$("tradeBtn").onclick = async () => {
+  const symbol = $("tSym").value, quantity = $("tQty").value;
+  $("tradeBtn").disabled = true;
+  const r = await api(side === "buy" ? "/api/buy" : "/api/sell", { symbol, quantity }, "POST");
+  $("tradeBtn").disabled = false;
+  toast(r.message || r.error || "Done", !!r.ok);
+  if (r.summary) setSummary(r.summary);
+  refresh();
+};
+
+async function loadPortfolio() {
+  const r = await api("/api/portfolio"); if (!r.ok) return;
+  const s = r.summary;
+  $("pfTiles").innerHTML = [
+    ["Cash", money(s.cash), ""], ["Holdings value", money(s.holdingsValue), ""], ["Net worth", money(s.netWorth), ""],
+    ["Realized P&L", signed(s.realized), cls(s.realized)], ["Unrealized P&L", signed(s.unrealized), cls(s.unrealized)],
+  ].map(([k, v, c]) => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
+  $("pfBody").innerHTML = r.holdings.length ? r.holdings.map((h) => `
+    <tr><td><b>${h.symbol}</b></td><td>${h.name}</td><td class="num">${h.quantity}</td>
+    <td class="num">${money(h.avgCost)}</td><td class="num">${money(h.price)}</td>
+    <td class="num ${cls(h.unrealized)}">${signed(h.unrealized)}</td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">You don't hold any shares yet. Buy some from the Market tab.</td></tr>`;
+}
+
+/* ---------- Transactions & Orders module ---------- */
+async function loadHistory() {
+  const r = await api("/api/history"); if (!r.ok) return;
+  $("hsBody").innerHTML = r.transactions.length ? r.transactions.map((t) => `
+    <tr><td><span class="badge ${t.type.toLowerCase()}">${t.type}</span></td><td><b>${t.symbol}</b></td>
+    <td class="num">${t.quantity}</td><td class="num">${money(t.price)}</td>
+    <td class="num ${t.type === "SELL" ? cls(t.pnl) : "muted"}">${t.type === "SELL" ? signed(t.pnl) : "–"}</td>
+    <td class="muted">${new Date(t.time * 1000).toLocaleString()}</td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">No transactions yet.</td></tr>`;
+}
+$("undoBtn").onclick = async () => {
+  const r = await api("/api/undo", {}, "POST");
+  toast(r.message || r.error, !!r.ok);
+  if (r.summary) setSummary(r.summary);
+  refresh();
+};
+
+/* ---------- Stock Market module: related stocks + trend ---------- */
+async function loadRelated() {
+  const sym = $("rSym").value; if (!sym) return;
+  const r = await api("/api/related", { symbol: sym }); if (!r.ok) return;
+  $("rBody").innerHTML = r.related.length ? r.related.map((x) => `
+    <tr><td><b>${x.symbol}</b></td><td>${x.name}</td><td class="num">${x.hops}</td><td class="num">${money(x.price)}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="empty">No correlated stocks found.</td></tr>`;
+}
+$("rSym").onchange = loadRelated;
+
+async function loadTrend() {
+  const sym = $("cSym").value; if (!sym) return;
+  const r = await api("/api/trend", { symbol: sym }); if (!r.ok) return;
+  drawChart(r.prices);
+  $("chartTiles").innerHTML = [
+    ["Latest price", money(r.prices[r.prices.length - 1]), ""],
+    ["10-tick moving average", money(r.movingAverage), ""],
+    ["Change since start", pct(r.sinceStart), cls(r.sinceStart)],
+    ["Ticks shown", String(r.prices.length), ""],
+  ].map(([k, v, c]) => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
+}
+$("cSym").onchange = loadTrend;
+
+function drawChart(p) {
+  const W = 900, H = 300, L = 70, R = 18, T = 16, B = 28;
+  if (p.length < 2) { $("chart").innerHTML = `<div class="empty">Advance the market to build a trend line.</div>`; return; }
+  let lo = Math.min(...p), hi = Math.max(...p);
+  if (hi - lo < 0.01) { hi += 1; lo -= 1; }
+  const pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
+  const x = (i) => L + (i * (W - L - R)) / (p.length - 1);
+  const y = (v) => T + ((hi - v) * (H - T - B)) / (hi - lo);
+  const up = p[p.length - 1] >= p[0], color = up ? "var(--up)" : "var(--down)";
+  let grid = "";
+  for (let g = 0; g <= 4; g++) {
+    const v = lo + ((hi - lo) * g) / 4, yy = y(v);
+    grid += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L - 8}" y="${yy + 4}" text-anchor="end">${v.toFixed(0)}</text>`;
+  }
+  const pts = p.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const area = `${L},${H - B} ${pts} ${x(p.length - 1).toFixed(1)},${H - B}`;
+  const dots = p.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="${color}"/>`).join("");
+  $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Price trend chart">
+    ${grid}<polygon points="${area}" fill="${color}" opacity=".10"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round"/>${dots}
+    <text x="${L}" y="${H - 8}">older</text><text x="${W - R}" y="${H - 8}" text-anchor="end">latest</text></svg>`;
+}
+
+/* ---------- start-up: resume an open session after a page refresh ---------- */
+(async function init() {
+  if (!token) return;
+  const m = await api("/api/market");
+  if (m.ok) showApp(); else showAuth();
+})();
+</script>
+</body>
+</html>
